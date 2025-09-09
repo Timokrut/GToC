@@ -1,122 +1,77 @@
-import os
-import json
-import time
-import asyncio
-import aiofiles
+import math
+import matplotlib.pyplot as plt
 
+def count_period(V_mod: int) -> float:
+    return 1/V_mod
 
-from ultralytics import YOLO
-from ChromeParser import ChromeParser   
+def find_amount_of_signals(V_inf: int, T: int) -> int:
+    log_q = T * V_inf
+    return 2 ** log_q 
 
-model = YOLO('model/AtomV1_0_0.pt')
+def create_i_pairs(q: int) -> list[tuple]:
+    length = int(q ** 0.5)
+    result = []
 
-async def main(vehicle_number):
-    parser = ChromeParser()
-
-    # Connecting to site and entering vehicle number
-    await parser.connect('https://sicmt.ru/fgis-taksi?type=car')
-    await parser.pasteNumber(vehicle_number)
-
-    # Donwloading and solving captcha
-    await parser.downloadCAPTCHA(location=parser.captcha_location, filename=parser.captcha_filename)
-
-    res = model(f'{parser.captcha_location}/{parser.captcha_filename}.png')
-
-    sorted_symbols = await process_capthca(res)
- 
-    # Trying to send captcha, if there nowhere to paste - just a skip
-    await parser.sendCAPTCHAsolution(sorted_symbols)
-   
-    await asyncio.sleep(3)
-
-    # Parsing data into json file
-    name_file = f'{vehicle_number}.json'
+    for i in range(length):
+        for j in range(length):
+            result.append((i, j))
     
-    data = await parser.click_and_parse_table()  #await parser.parseTable()
+    return result
+
+def calculate_signal(S_i: tuple[float], T: float, f_0: int) -> tuple[list[float], list[float]]:
+    Si_1, Si_2 = S_i 
+    x = []
+    y = []
+    for t in range(1, 2400):
+        part1 = Si_1 * (2 / T) ** 0.5 * math.cos(2 * math.pi * f_0 * ((T / 2400) * t))
+        part2 = Si_2 * (2 / T) ** 0.5 * math.sin(2 * math.pi * f_0 * ((T / 2400) * t))
+        x.append(T / 2400 * t)
+        y.append(part1 + part2)
+
+    return x, y 
+
+def count_si_wo_A(i_pair: tuple, q: int) -> tuple:
+    i_1, i_2 = i_pair
+
+    si_1 = 1 - ((2 * i_1) / (q ** 0.5 - 1))
+    si_2 = 1 - ((2 * i_2) / (q ** 0.5 - 1))
     
-    await save_json(data, name_file)
+    return (si_1, si_2)
 
-    #await parser.click_on_table()
+def count_energy_of_signal(S_i: tuple[float]):
+    Si_1, Si_2 = S_i 
+    return Si_1 ** 2 + Si_2 ** 2
 
 
-    await asyncio.sleep(2)
+if __name__ == "__main__":
+    f_0 = 1800 # Hz 
+    V_mod = 2400 #Boad
+    V_inf = 12000 # bit/sec 
 
-    #parser._click_and_parse_table()
-    # await parser.click_export_button()
-    # await asyncio.sleep(1)
-    # await parser.downloadCAPTCHA(location=parser.captcha_location, filename=parser.captcha_filename)
+    T = count_period(V_mod)
+    q = find_amount_of_signals(V_inf, T)
+    i_pairs = create_i_pairs(q)
+    all_x_array = []
+    all_y_array = []
+    for enum, i in enumerate(i_pairs):
+        S_i = count_si_wo_A(i, q) 
+
+        x_array, y_array = calculate_signal(S_i, T, f_0)
+        [all_x_array.append(k + T * enum) for k in x_array]
+        [all_y_array.append(k) for k in y_array]
+
+        energy_of_signal = count_energy_of_signal(S_i)
+
     
-    # res = model(f'{parser.captcha_location}/{parser.captcha_filename}.png')
+    fig_class, axis_class = plt.subplots()
+    axis_class.set_title(f"Graphic. Energy: {energy_of_signal}")
+    axis_class.set_xlabel("t")
+    axis_class.set_ylabel("Si(t)")
+    plt.plot(all_x_array, all_y_array)
 
-    # sorted_symbols = await process_capthca(res)
-    # # Trying to send captcha, if there nowhere to paste - just a skip
-    # await parser.sendCAPTCHAsolution(sorted_symbols) 
-    
-    await asyncio.sleep(2)
-
-    print(f'downloaded pdf for {vehicle_number}')
-    print(f'finished {vehicle_number}')
-    await parser.close(vehicle_number)
-    return name_file
-    
-
-async def process_capthca(res):
-    predicted_objects = res[0].boxes.xyxy.cpu().numpy()
-    predicted_classes = res[0].boxes.cls.cpu().numpy()
-    predicted_confidences = res[0].boxes.conf.cpu().numpy()
-
-    results = [
-        (model.names[int(predicted_classes[i])], predicted_confidences[i], *map(int, predicted_objects[i]))
-        for i in range(len(predicted_objects))
-    ]
-
-    sorted_results = sorted(results, key=lambda x: x[2])
-    sorted_symbols = ''.join([item[0] for item in sorted_results])
-    return sorted_symbols
-
-async def save_json(data, name_file):
-    async with aiofiles.open(name_file, "w", encoding='utf-8') as file:
-        await file.write(json.dumps(data, ensure_ascii=False, indent=4))
-
-async def test():
-    start_time = time.perf_counter()
-    
-    await asyncio.gather(
-        #main('Т912ХА799'),
-        main('В167ВА01'),
-        # main('Е672РУ18'), 
-        # main('ВУ52899'),
-        # main('В562СС799'),
-        # main('Х927НХ31'),
-        # main('1')
-    )
-    end_time = time.perf_counter()
-    print(f"Total execution time: {end_time - start_time:.2f} seconds")
-
-async def test2():
-    # asyncio.run(test())
-    UUID = 'c2e7b69a-c510-4886-b3e5-888910397f12'
-    url = f'https://sicmt.ru/fgis-taksi/car?id={UUID}'
-    model = YOLO('model/AtomV1_0_0.pt')
-    parser = ChromeParser()
-
-    await parser.connect(url)
-    await asyncio.sleep(3)
-    await parser.click_export_button()
-    await asyncio.sleep(3)
-
-    await parser.downloadCAPTCHA(location=parser.captcha_location, filename=parser.captcha_filename)
-
-    res = model(f'{parser.captcha_location}/{parser.captcha_filename}.png')
-
-    sorted_symbols = await process_capthca(res)
-    # Trying to send captcha, if there nowhere to paste - just a skip
-    await parser.sendCAPTCHAsolution(sorted_symbols)
-    asyncio.sleep(2) 
+    plt.show()
 
 
-    os.system(f'mv {parser.save_pdf_path} ./{UUID}.pdf')
-
-
-if __name__ == '__main__':
-    asyncio.run(test2())
+        # with open(f'temp{enum}.txt', 'w') as f:
+        #     for j in calculate_signal(S_i, count_period(V_mod), f_0):
+        #         f.write(str(j)+"\n")
