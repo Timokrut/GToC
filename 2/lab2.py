@@ -42,20 +42,13 @@ def fourier_transform_qam(f: np.ndarray, s_i: tuple, T: float, f_0: int) -> np.n
     S_f = (term1 + term2) * np.exp(-1j * np.pi * f * T)
     return S_f
 
-def get_analytical_expression(s_i: tuple, T: float, f_0: int) -> str:
-    si_1, si_2 = s_i
-    si_1_str = f"{si_1:.3f}"
-    si_2_str = f"{si_2:.3f}"
-    expr = (f"[{si_1_str}*(T/2)*(sinc((f-{f_0})*T) + sinc((f+{f_0})*T)) + {si_2_str}*(T/2)*(sinc((f-{f_0})*T) - sinc((f+{f_0})*T))/j]*exp(-j*pi*f*T)")
-    return expr
-
 def count_W(T: float) -> float:
     return 2 / T
 
-def calculate_signal_sequence_spectrum(sequence_indices: list, signals_spectra: list, frequencies: np.ndarray, T: float) -> np.ndarray:
+def count_seq(sequence_indices: list, signals_spectra: list, frequencies: np.ndarray, T: float) -> np.ndarray:
     total_spectrum = np.zeros_like(frequencies, dtype=complex)
     for l, signal_idx in enumerate(sequence_indices):
-        signal_spectrum = signals_spectra[signal_idx] * np.exp(-2j * np.pi * frequencies * l * T)
+        signal_spectrum = signals_spectra[0] * np.exp(-2j * np.pi * frequencies * l * T)
         total_spectrum += signal_spectrum
     total_spectrum = total_spectrum / len(sequence_indices)
     return total_spectrum
@@ -71,32 +64,19 @@ if __name__ == '__main__':
     T = count_T(V_mod)
     q = count_q(V_inf, T)
 
-    print("\nОБЩИЕ ПАРАМЕТРЫ:")
-    print(f"Скорость модуляции V_mod: {V_mod} Бод")
-    print(f"Информационная скорость V_inf: {V_inf} бит/сек")
-    print(f"Период сигнала T: {T:.6f} сек")
-    print(f"Количество сигналов q: {q}")
-    print(f"Несущая частота f_0: {f_0} Гц")
+    print(f"V_mod: {V_mod} Бод")
+    print(f"V_inf: {V_inf} бит/с")
+    print(f"T: {T:.6f} сек")
+    print(f"q: {q}")
+    print(f"f_0: {f_0} Гц")
 
     i_pairs = create_i_pairs(q)
-
-    # === DF === 
-    table_data = []
-    for i, pair in enumerate(i_pairs):
-        s_i = count_si_values(pair, q, A)
-        fourier_expr = get_analytical_expression(s_i, T, f_0)
-        table_data.append([i, pair[0], pair[1], f"{s_i[0]:.3f}", f"{s_i[1]:.3f}", fourier_expr])
-
-    df = pd.DataFrame(table_data, columns=['№', 'i1', 'i2', 's_i1', 's_i2', 'Преобразование Фурье S_i(f)'])
-    print("\nПОЛНАЯ ТАБЛИЦА СИГНАЛОВ:")
-    print(df.to_string(index=False, justify='left'))
-    # === DF === 
 
     dt = 1 / (f_0 * Ns)
     t = np.arange(0, T, dt)
 
     f_max = 6 * f_0
-    N_freq = 4096
+    N_freq = 4096 
     frequencies = np.linspace(-f_max, f_max, N_freq)
 
     signals_spectras = []
@@ -126,11 +106,11 @@ if __name__ == '__main__':
     plt.show()
 
     bw = count_W(T)
-    print(f"\nШИРИНА ПОЛОСЫ ЧАСТОТ ДЛЯ ОДИНОЧНЫХ СИГНАЛОВ:")
-    print(f"Ширина полосы (2/T): {bw:.1f} Гц")
+    print(f"Ширина полосы W: {bw:.1f} Гц")
     print(f"Общая ширина полосы множества сигналов: {bw:.1f} Гц")
 
     sequences: list[list] = [
+        list(range(1)),
         list(range(4)),
         list(range(8)),
         list(range(16))
@@ -140,10 +120,10 @@ if __name__ == '__main__':
     sequence_spectra = []
 
     for seq_idx, sequence in enumerate(sequences):
-        spectrum_sequence = calculate_signal_sequence_spectrum(sequence, signals_spectras, frequencies, T)
+        spectrum_sequence = count_seq(sequence, signals_spectras, frequencies, T)
         sequence_spectra.append(spectrum_sequence)
         sequence_bw = 2 / (sequence_lengths[seq_idx] * T)
-        print(f"Последовательность длиной {sequence_lengths[seq_idx]}: теоретическая ширина полосы = {sequence_bw:.1f} Гц")
+        print(f"Последовательность длиной {sequence_lengths[seq_idx]}: ширина полосы = {sequence_bw:.1f} Гц")
 
     plt.figure(figsize=(12, 5))
     for i, (spectrum, length) in enumerate(zip(sequence_spectra, sequence_lengths)):
