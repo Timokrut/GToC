@@ -1,7 +1,6 @@
 import math
 import numpy as np
 import matplotlib.pyplot as plt
-import pandas as pd
 
 
 def count_T(V_mod: int) -> float:
@@ -27,8 +26,7 @@ def count_si_values(i_pair: tuple, q: float, A: float = 1.0) -> tuple:
 
 def calculate_signal(s_i: tuple, T: float, f_0: int, t: np.ndarray) -> np.ndarray:
     si_1, si_2 = s_i
-    signal = (si_1 * math.sqrt(2 / T) * np.cos(2 * math.pi * f_0 * t) +
-              si_2 * math.sqrt(2 / T) * np.sin(2 * math.pi * f_0 * t))
+    signal = (si_1 * math.sqrt(2 / T) * np.cos(2 * math.pi * f_0 * t) + si_2 * math.sqrt(2 / T) * np.sin(2 * math.pi * f_0 * t))
     return signal
 
 def fourier_transform_qam(f: np.ndarray, s_i: tuple, T: float, f_0: int) -> np.ndarray:
@@ -37,21 +35,20 @@ def fourier_transform_qam(f: np.ndarray, s_i: tuple, T: float, f_0: int) -> np.n
     def sinc(x):
         return np.where(x == 0, 1.0, np.sin(np.pi * x) / (np.pi * x))
 
-    term1 = si_1 * math.sqrt(T / 2) * (sinc((f - f_0) * T) + sinc((f + f_0) * T))
-    term2 = si_2/1j * math.sqrt(T / 2) * (sinc((f - f_0) * T) - sinc((f + f_0) * T))
-    S_f = (term1 + term2) * np.exp(-1j * np.pi * f * T)
-    return S_f
+    p1 = si_1 * math.sqrt(T / 2) * (sinc((f - f_0) * T) + sinc((f + f_0) * T))
+    p2 = si_2/1j * math.sqrt(T / 2) * (sinc((f - f_0) * T) - sinc((f + f_0) * T))
+    return (p1 + p2) * np.exp(-1j * np.pi * f * T)
 
 def count_W(T: float) -> float:
     return 2 / T
 
-def count_seq(sequence_indices: list, signals_spectra: list, frequencies: np.ndarray, T: float) -> np.ndarray:
-    total_spectrum = np.zeros_like(frequencies, dtype=complex)
-    for l, signal_idx in enumerate(sequence_indices):
-        signal_spectrum = signals_spectra[0] * np.exp(-2j * np.pi * frequencies * l * T)
-        total_spectrum += signal_spectrum
-    total_spectrum = total_spectrum / len(sequence_indices)
-    return total_spectrum
+def count_seq(sequence_idx: list, signals_spectr: list, frequencies: np.ndarray, T: float) -> np.ndarray:
+    total_spectr = np.zeros_like(frequencies, dtype=complex)
+    for l, signal_idx in enumerate(sequence_idx):
+        signal_spectr = signals_spectr[0] * np.exp(-2j * np.pi * frequencies * l * T)
+        total_spectr += signal_spectr
+    total_spectr = total_spectr / len(sequence_idx)
+    return total_spectr
 
 
 if __name__ == '__main__':
@@ -79,11 +76,11 @@ if __name__ == '__main__':
     N_freq = 4096 
     frequencies = np.linspace(-f_max, f_max, N_freq)
 
-    signals_spectras = []
+    signals_spectr = []
     for i, pair in enumerate(i_pairs):
         s_i = count_si_values(pair, q, A)
         spectrum = fourier_transform_qam(frequencies, s_i, T, f_0)
-        signals_spectras.append(spectrum)
+        signals_spectr.append(spectrum)
 
     n_cols = 4
     n_rows = 4
@@ -93,8 +90,8 @@ if __name__ == '__main__':
 
     for i in range(q):
         if i < len(axes):
-            amplitude_spectrum = np.abs(signals_spectras[i])
-            axes[i].plot(frequencies, amplitude_spectrum, 'b-', linewidth=1.5)
+            amplitude_spectr = np.abs(signals_spectr[i])
+            axes[i].plot(frequencies, amplitude_spectr, 'b-', linewidth=1.5)
             axes[i].set_title(f'Сигнал {i} ({i_pairs[i][0]}, {i_pairs[i][1]})', fontsize=10)
             axes[i].set_xlabel('Частота, Гц', fontsize=9)
             axes[i].set_ylabel('|S(f)|', fontsize=9)
@@ -105,9 +102,9 @@ if __name__ == '__main__':
     plt.subplots_adjust(top=0.90)
     plt.show()
 
-    bw = count_W(T)
-    print(f"Ширина полосы W: {bw:.1f} Гц")
-    print(f"Общая ширина полосы множества сигналов: {bw:.1f} Гц")
+    w = count_W(T)
+    print(f"Ширина полосы W: {w:.1f} Гц")
+    print(f"Общая ширина полосы множества сигналов: {w:.1f} Гц")
 
     sequences: list[list] = [
         list(range(1)),
@@ -116,17 +113,17 @@ if __name__ == '__main__':
         list(range(16))
     ]
 
-    sequence_lengths = [len(x) for x in sequences]
-    sequence_spectra = []
+    seq_lengths = [len(x) for x in sequences]
+    seq_spectra = []
 
     for seq_idx, sequence in enumerate(sequences):
-        spectrum_sequence = count_seq(sequence, signals_spectras, frequencies, T)
-        sequence_spectra.append(spectrum_sequence)
-        sequence_bw = 2 / (sequence_lengths[seq_idx] * T)
-        print(f"Последовательность длиной {sequence_lengths[seq_idx]}: ширина полосы = {sequence_bw:.1f} Гц")
+        spectr_seq = count_seq(sequence, signals_spectr, frequencies, T)
+        seq_spectra.append(spectr_seq)
+        seq_w = 2 / (seq_lengths[seq_idx] * T)
+        print(f"Последовательность длиной {seq_lengths[seq_idx]}: ширина полосы = {seq_w:.1f} Гц")
 
     plt.figure(figsize=(12, 5))
-    for i, (spectrum, length) in enumerate(zip(sequence_spectra, sequence_lengths)):
+    for i, (spectrum, length) in enumerate(zip(seq_spectra, seq_lengths)):
         amplitude = np.abs(spectrum)
         plt.plot(frequencies, amplitude, label=f'Длина {length}', linewidth=2)
     plt.title('Спектры последовательностей различной длины')
