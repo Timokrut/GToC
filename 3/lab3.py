@@ -41,21 +41,59 @@ def create_signal_constellation(q: int, A: float = 1.0) -> tuple:
 
     return constellation_points, i_pairs
 
-def plot_constellation(constellation_points: list, q: int):
+def generate_signal(si1, si2, phi1, phi2):
+    return si1 * phi1 + si2 * phi2
+
+def project_onto_basis(s, phi, t):
+    return np.trapezoid(s * phi, t)
+
+def distorted_constellation(constellation_points, T, f_0, N=3):
+    t = np.linspace(0, T, N)
+
+    phi1 = np.sqrt(2 / T) * np.cos(2 * np.pi * f_0 * t)
+    phi2 = np.sqrt(2 / T) * np.sin(2 * np.pi * f_0 * t)
+
+    distorted = []
+
+    for (s1, s2) in constellation_points:
+        s = generate_signal(s1, s2, phi1, phi2)
+        
+        d1 = project_onto_basis(s, phi1, t)
+        d2 = project_onto_basis(s, phi2, t)
+        
+        distorted.append((d1, d2))
+
+    return distorted
+
+def plot_constellations(constellation_points: list, distorted_points: list):
     plt.figure(figsize=(8, 8))
 
-    for i, point in enumerate(constellation_points):
-        x = point[0]
-        y = point[1]
-        plt.plot(x, y, 'ro', markersize=8)
-        plt.text(x + 0.05, y + 0.05, f's{i}', fontsize=10)
+    original_x = [p[0] for p in constellation_points]
+    original_y = [p[1] for p in constellation_points]
+
+    distorted_x = [p[0] for p in distorted_points]
+    distorted_y = [p[1] for p in distorted_points]
+
+    for i in range(len(constellation_points)):
+        x_o = original_x[i]
+        y_o = original_y[i]
+
+        x_d = distorted_x[i]
+        y_d = distorted_y[i]
+
+        plt.plot(x_o, y_o, 'ro', markersize=8)
+        plt.text(x_o + 0.05, y_o + 0.05, f's{i} O', fontsize=10)
+        
+        plt.plot(x_d, y_d, 'go', markersize=8)
+        plt.text(x_d + 0.05, y_d + 0.05, f's{i} D', fontsize=10)
     
+
     plt.axhline(0, color='gray', linestyle='--')
     plt.axvline(0, color='gray', linestyle='--')
     plt.grid(True, alpha=0.3)
     plt.xlabel('s_i1 (амплитуда cos)')
     plt.ylabel('s_i2 (амплитуда sin)')
-    plt.title(f'Сигнальное созвездие')
+    plt.title(f'Сигнальное созвездие (теоретическое и искаженное)')
     plt.axis('equal')
     plt.show()
 
@@ -103,8 +141,8 @@ def plot_decision_regions(constellation_points: list, q: int):
     plt.ylabel('s_i2 (амплитуда sin)')
     plt.title(f'Решающие области')
     # plt.axis('equal')
-    plt.xlim(-1.3, 1.3)
-    plt.ylim(-1.4, 1.4)
+    plt.xlim(-1.5, 1.48)
+    plt.ylim(-1.49, 1.49)
     plt.show()
 
 if __name__ == "__main__":
@@ -135,9 +173,7 @@ if __name__ == "__main__":
     print("(φ2, φ1) = 0.000000")
 
     constellation_points, i_pairs = create_signal_constellation(q, A)
+    distorted_points = distorted_constellation(constellation_points, T, f_0)
 
-    plot_constellation(constellation_points, q)
-    
+    plot_constellations(constellation_points, distorted_points)
     plot_decision_regions(constellation_points, q)
-    # Обрезать 2 график, чтобы не было белого
-    # Нарисовать 1 график, искаженный из за уменьшения дискретизации
