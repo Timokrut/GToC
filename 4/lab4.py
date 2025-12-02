@@ -173,7 +173,7 @@ def simulate_communication_system_full(constellation_points, q, T, f_0, gamma_dB
                 plt.plot(point[0], point[1], 'ro', markersize=8)
                 plt.text(point[0] + 0.05, point[1] + 0.05, f's{idx}', fontsize=10)
 
-            plt.title(f'Принятые точки и сигнальное созвездие (SNR = {gamma_dB} дБ)\nИспытаний: {N_test}, Ошибок: {N_err}')
+            plt.title(f'Диаграмма рассеивания при SNR = {gamma_dB} дБ\nИспытаний: {N_test}, Ошибок: {N_err}')
             plt.xlabel('r₁ (проекция на φ₁(t))')
             plt.ylabel('r₂ (проекция на φ₂(t))')
             plt.grid(True, alpha=0.3)
@@ -184,6 +184,22 @@ def simulate_communication_system_full(constellation_points, q, T, f_0, gamma_dB
     return experimental_pe, theoretical_pe
 
 def probability_results(gamma_dB_values, experimental_pe, theoretical_pe):
+    plt.figure(figsize=(8, 6))
+
+    # График вероятности ошибки
+    plt.semilogy(gamma_dB_values, experimental_pe, 'bo-', label='Экспериментальная', markersize=6)
+    plt.semilogy(gamma_dB_values, theoretical_pe, 'r--', label='Теоретическая', linewidth=2)
+
+    plt.xlabel('Отношение сигнал/шум (Eb/N0, дБ)')
+    plt.ylabel('Вероятность ошибки на символ')
+    plt.title('Сравнение теоретической и экспериментальной вероятности ошибки')
+    plt.grid(True, alpha=0.3)
+    plt.legend()
+    plt.xticks(gamma_dB_values)
+
+    plt.tight_layout()
+    plt.show()
+    
     results_df = pd.DataFrame({
         'SNR (dB)': gamma_dB_values,
         'P_e (эксп)': experimental_pe,
@@ -191,8 +207,6 @@ def probability_results(gamma_dB_values, experimental_pe, theoretical_pe):
     })
     print("\nРезультаты моделирования:")
     print(results_df.to_string(index=False, float_format='%.6f'))
-
-
 
 
 if __name__ == '__main__':
