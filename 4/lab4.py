@@ -17,7 +17,7 @@ def phi_1(t, T, f_0):
 def phi_2(t, T, f_0):
     return np.sqrt(2 / T) * np.sin(2 * np.pi * f_0 * t)
 
-def count_E_avg(constellation_points) -> float:
+def count_E_avg(constellation_points, q) -> float:
     E_sum = 0
     for point in constellation_points:
         E_sum += point[0] ** 2 + point[1] ** 2
@@ -62,31 +62,20 @@ def signal_points(constellation_points, T, f_0, N=1000):
     return distorted
 
 def Q(x):
-    """
-    Q(x) = (1/√(2π)) ∫ₓ^∞ e^(-z²/2) dz
-    """
     def integrand(z):
         return math.exp(-z ** 2 / 2) / math.sqrt(2 * math.pi)
     
     integration_result = integrate.quad(integrand, x, np.inf)
-    return integration_result[0]  # Берем только значение интеграла
+    return integration_result[0]
     
-def theoretical_pe_kam(q, E_avg_over_N0):
-    """
-    P_e ≤ [1 - (1 - 2(1 - 1/M) * Q(√(3E/((M²-1)N₀))))²]
-    """
+def theoretical_pe_kam(q, gamma):
     M = int(math.sqrt(q))
-
-    # Спектральная плотность мощности шума N₀ = 1 (нормировка)
-    N0 = 1.0
     
-    # Аргумент функции Q
-    argument = math.sqrt(3 * E_avg_over_N0 / ((M ** 2 - 1) * N0))
+    argument = math.sqrt(3 * gamma / ((M ** 2 - 1)))
     Q_val = Q(argument)
     Pe_exact = 1 - (1 - 2 * (1 - 1 / M) * Q_val) ** 2
     return Pe_exact
 
-# правило минимального расстояния,макс правдоподобия
 def optimal_point(r, signal_points):
     min_dist = float('inf')
     decision = 0    
@@ -106,7 +95,7 @@ def simulate_communication_system_full(constellation_points, q, T, f_0, gamma_dB
     t = np.linspace(0, T, N)
     
     signal_points_base = signal_points(constellation_points, T, f_0)
-    E_avg = count_E_avg(constellation_points)
+    E_avg = count_E_avg(constellation_points, q)
     phi1 = phi_1(t, T, f_0) 
     phi2 = phi_2(t, T, f_0)
 
@@ -122,7 +111,7 @@ def simulate_communication_system_full(constellation_points, q, T, f_0, gamma_dB
 
         N_err = 0  # число ошибок
         N_test = 0 # число испытний
-        N_errmax = 500 if gamma_dB >= 10 else max_errors
+        N_errmax = 1000 
 
         received_points = []
 
@@ -134,6 +123,9 @@ def simulate_communication_system_full(constellation_points, q, T, f_0, gamma_dB
             # Генерация АБГШ во временной области
             s_i1, s_i2 = constellation_points[i]
             signal_i = generate_signal(s_i1, s_i2, phi1, phi2)
+            # Генерация шума по нормальному распеределению
+            # Мат ожидание 0
+            # Дисперсия N0 / 2 
             noise_t = np.random.normal(0, 1, len(t)) * math.sqrt(N0 * len(t) / (2 * T))
             r_t = signal_i + noise_t
  
