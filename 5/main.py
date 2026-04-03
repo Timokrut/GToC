@@ -4,18 +4,15 @@ import math
 
 np.random.seed(100)
 
-# Функция для верхней оценки вероятности ошибки некогерентной ортогональной ЧМ
 def theoretical_pe_func(q, SNR):
     Pe = 0.0
     for l in range(1, q):
-        sign = (-1) ** (l + 1)
         comb = math.comb(q - 1, l)
-        Pe += sign * comb * 1.0 / (l + 1) * math.exp(-l * SNR / (l + 1))
+        Pe += comb * ((-1) ** (l + 1)) / (1 + l) * math.exp((-l / (l + 1)) * SNR)
     
     return Pe
 
 def simulate(frequencies, T, E, gamma_dBs, max_errors=50, Nt=1000):
-    # Nt число отсчетов на интервале
     t = np.linspace(0, T, Nt)
     
     # Базисные функции
@@ -40,8 +37,6 @@ def simulate(frequencies, T, E, gamma_dBs, max_errors=50, Nt=1000):
         SNR = 10 ** (gamma_dB / 10)
         N0 = E / SNR      # спектральная плотность шума
         sigma_t = math.sqrt(N0 * Nt / (2 * T))
-
-        print(f"\nОСШ_дБ = {gamma_dB} dB, ОСШ_разы = {SNR:.6f}, N0 = {N0:.6f}, sigma = {sigma_t:.6f}")
     
         N_err = 0
         N_test = 0
