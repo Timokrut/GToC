@@ -53,7 +53,7 @@ def simulate(frequencies, T, E, gamma_dBs, max_errors=50, Nt=1000):
             r_t = np.cos(theta) * sig_cos[i] + np.sin(theta) * sig_sin[i]
             
             # Генерация шума
-            noise = np.random.normal(0, sigma_t, size=t.shape)
+            noise = np.random.normal(0, sigma_t, Nt)
             r = r_t + noise
             
             # Моделирование приемника
@@ -84,10 +84,9 @@ def simulate(frequencies, T, E, gamma_dBs, max_errors=50, Nt=1000):
         print(f"P_e(эксп) = {pe_exp:.6f}, P_e(теор) = {pe_theor:.6f}")
     return experimental_pe, theoretical_pe
 
-# Функция построения графиков
 def plot_results(gamma_dB_values, experimental_pe, theoretical_pe):
     plt.figure(figsize=(10, 6))
-    plt.semilogy(gamma_dB_values, experimental_pe, 'bo-', label='Экспериментальная')# лог шкала
+    plt.semilogy(gamma_dB_values, experimental_pe, 'bo-', label='Экспериментальная')
     plt.semilogy(gamma_dB_values, theoretical_pe, 'r--', label='Теоретическая')
     plt.xlabel('Отношение сигнал/шум (E/N0), дБ')
     plt.ylabel('Вероятность ошибки')
@@ -114,9 +113,6 @@ if __name__ == '__main__':
     
     # Диапазон SNR
     gamma_dBs = np.arange(0, 12, 2)
-    print("МОДЕЛИРОВАНИЕ ПЕРЕДАЧИ ЧМ СИГНАЛОВ ПО КАНАЛУ СО СЛУЧАЙНОЙ ФАЗОЙ")
-    print(f"Параметры: q = {q}, T = {T * 1e6:.2f} мкс, f0 = {f0 / 1e6:.2f} МГц, delta_f = {delta_f / 1e3:.2f} кГц")
-    print(f"Частоты (МГц): {[f / 1e6 for f in frequencies]}")
     
     # Запуск моделирования
     experimental_pe, theoretical_pe = simulate(frequencies, T, E, gamma_dBs, max_errors=100)
