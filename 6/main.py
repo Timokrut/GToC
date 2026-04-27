@@ -39,7 +39,7 @@ def simulate(frequencies, T, E, gamma_dBs, epsilon, max_errors=50, Nt=1000):
     for gamma_dB in gamma_dBs:
         SNR = 10 ** (gamma_dB / 10)
         N0 = E / SNR      # спектральная плотность шума
-        sigma_t = math.sqrt(N0 * Nt / (2 * T))
+        sigma_t = math.sqrt((N0 / 2) *  (Nt / T))
     
         N_err = 0
         N_test = 0
@@ -142,6 +142,10 @@ if __name__ == '__main__':
     all_experimental = []
     all_theoretical = []
 
+    # параметр замираний e
+    # ε = 1 - канал без замираний
+    # ε ∈ (0, 1) - канал Райса, есть прямая и рассеянная компоненты
+    # ε = 0 - канал Релея, только рассеянная компонента
     epsilon_values = [0, 0.5, 1.0]
 
     for eps in epsilon_values:
